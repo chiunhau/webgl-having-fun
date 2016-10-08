@@ -4,7 +4,6 @@ attribute vec4 a_normal;
 
 varying vec4 v_color;
 
-uniform mat4 u_transformation;
 uniform float u_fudgeFactor;
 uniform vec3 u_lightColor;
 uniform vec3 u_lightDirection;

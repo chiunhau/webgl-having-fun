@@ -59,6 +59,7 @@
 	gl.useProgram(program);
 	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 	gl.clearColor(1, 0.90, 0.99, 1.0);
+	// gl.clearColor(0.0, 0.0, 0.0, 1.0);
 	gl.enable(gl.CULL_FACE);
 	gl.enable(gl.DEPTH_TEST);
 
@@ -96,6 +97,8 @@
 	  f1.add(params, 'scaleY', 1, 5).onChange(drawScene);
 	  f1.add(params, 'scaleZ', 1, 5).onChange(drawScene);
 
+	  f1.open();
+
 	  var f2 = gui.addFolder('Camera Settings');
 
 	  f2.add(params, 'cameraX', 0.0, 500).onChange(drawScene);
@@ -110,17 +113,11 @@
 
 	var positionAttribLocation = gl.getAttribLocation(program, 'a_position');
 	var positionBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-	gl.enableVertexAttribArray(positionAttribLocation);
-	gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometries.cube(100)), gl.STATIC_DRAW);
+
 
 	var colorAttribLocation = gl.getAttribLocation(program, 'a_color');
 	var colorBuffer = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-	gl.enableVertexAttribArray(colorAttribLocation);
-	gl.vertexAttribPointer(colorAttribLocation, 3, gl.UNSIGNED_BYTE, true, 0, 0);
-	gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geometries.cubeColors()), gl.STATIC_DRAW);
+
 
 	var normalAttribLocation = gl.getAttribLocation(program, 'a_normal');
 	var normalBuffer = gl.createBuffer();
@@ -142,8 +139,14 @@
 	drawScene()
 	// var frameCount = 0;
 	function drawScene() {
-
 	  gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
+
+	  //position
+	  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+	  gl.enableVertexAttribArray(positionAttribLocation);
+	  gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
+	  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometries.cube(100)), gl.STATIC_DRAW);
+
 	  var transformationMat = tfm.multiply(tfm.scale(params.scaleX, params.scaleY, params.scaleZ), tfm.rotateX(params.rotateX));
 
 	  transformationMat = tfm.multiply(transformationMat, tfm.rotateY(params.rotateY));
@@ -156,26 +159,20 @@
 	  gl.uniformMatrix4fv(worldViewProjectionLocation, false, transformationMat);
 
 	  gl.uniform1f(fudgeLocation, params.fudgeFactor);
-	  // gl.uniformMatrix4fv(transformationUniLocation, false, transformationMat);
+
 
 	  gl.uniform3f(lightColorLocation, 1.0, 1.0, 1.0);
 	  gl.uniform3f(lightDirectionLocation, -1.0, -0.5, -0.2);
 
-	  //set Camera
-	  // gl.uniformMatrix4fv(viewMatrixUniLocation, false, lookAt(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0));
 
-	  // var cameraMatrix = tfm.translate(200, 0, 0);
-	  // cameraMatrix = tfm.multiply(cameraMatrix, tfm.rotateY)
-	  var cameraMatrix = lookAt(200, 0, 0, 0, 0, 0, 0, 1, 0);
-	  var viewMatrix = tfm.inverse(cameraMatrix);
+	  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+	  gl.enableVertexAttribArray(colorAttribLocation);
+	  gl.vertexAttribPointer(colorAttribLocation, 3, gl.UNSIGNED_BYTE, true, 0, 0);
+	  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geometries.cubeColors()), gl.STATIC_DRAW);
 
 	  gl.drawArrays(gl.TRIANGLES, 0, 36);
-	  // frameCount += 1;
-	  // requestAnimationFrame(drawScene);
-	}
 
-	console.log(lookAt(200, 0, 0,0, 0, 0, 0, 1, 0));
-	// requestAnimationFrame(drawScene);
+	}
 
 	//tools
 
@@ -222,14 +219,6 @@
 	    ex, ey, ez, 1
 	  ];
 
-	  // var translation = [
-	  //   1, 0, 0, -ex,
-	  //   0, 1, 0, -ey,
-	  //   0, 0, 1, -ez,
-	  //   0, 0, 0, 1
-	  // ];
-
-	  // return tfm.multiply(matrix, translation);
 	  return matrix
 	}
 
@@ -238,7 +227,7 @@
 /* 1 */
 /***/ function(module, exports) {
 
-	module.exports = "attribute vec4 a_position;\nattribute vec4 a_color;\nattribute vec4 a_normal;\n\nvarying vec4 v_color;\n\nuniform mat4 u_transformation;\nuniform float u_fudgeFactor;\nuniform vec3 u_lightColor;\nuniform vec3 u_lightDirection;\nuniform mat4 u_viewMatrix;\n\n\nuniform mat4 u_worldViewProjection; //with camera view\nuniform mat4 u_world; //original pos\n\nvoid main() {\n  //calculate position\n  vec4 position = u_worldViewProjection  * a_position;\n  float zToDivideBy = 1.0 - position.z * u_fudgeFactor;\n  gl_Position = vec4(position.xy / zToDivideBy, position.zw);\n\n\n  //calculate color\n  vec3 normal = normalize(mat3(u_world) *  vec3(a_normal));\n  vec3 reverseLightDirection = normalize(u_lightDirection * -1.0);\n  float dotProduct = dot(reverseLightDirection, normal);\n  // vec3 diffuse = u_lightColor * a_color.xyz * dotProduct;\n  vec3 diffuse = u_lightColor * vec3(0.8, 0.8, 0.8) * dotProduct;\n\n  v_color = vec4(diffuse, a_color.a);\n  // v_color = a_color;\n}\n"
+	module.exports = "attribute vec4 a_position;\nattribute vec4 a_color;\nattribute vec4 a_normal;\n\nvarying vec4 v_color;\n\nuniform float u_fudgeFactor;\nuniform vec3 u_lightColor;\nuniform vec3 u_lightDirection;\nuniform mat4 u_viewMatrix;\n\n\nuniform mat4 u_worldViewProjection; //with camera view\nuniform mat4 u_world; //original pos\n\nvoid main() {\n  //calculate position\n  vec4 position = u_worldViewProjection  * a_position;\n  float zToDivideBy = 1.0 - position.z * u_fudgeFactor;\n  gl_Position = vec4(position.xy / zToDivideBy, position.zw);\n\n\n  //calculate color\n  vec3 normal = normalize(mat3(u_world) *  vec3(a_normal));\n  vec3 reverseLightDirection = normalize(u_lightDirection * -1.0);\n  float dotProduct = dot(reverseLightDirection, normal);\n  // vec3 diffuse = u_lightColor * a_color.xyz * dotProduct;\n  vec3 diffuse = u_lightColor * vec3(0.8, 0.8, 0.8) * dotProduct;\n\n  v_color = vec4(diffuse, a_color.a);\n  // v_color = a_color;\n}\n"
 
 /***/ },
 /* 2 */

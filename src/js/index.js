@@ -13,6 +13,7 @@ var program = createProgram(gl, vertShader, fragShader);
 gl.useProgram(program);
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 gl.clearColor(1, 0.90, 0.99, 1.0);
+// gl.clearColor(0.0, 0.0, 0.0, 1.0);
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
 
@@ -50,6 +51,8 @@ window.onload = function() {
   f1.add(params, 'scaleY', 1, 5).onChange(drawScene);
   f1.add(params, 'scaleZ', 1, 5).onChange(drawScene);
 
+  f1.open();
+
   var f2 = gui.addFolder('Camera Settings');
 
   f2.add(params, 'cameraX', 0.0, 500).onChange(drawScene);
@@ -64,17 +67,11 @@ window.onload = function() {
 
 var positionAttribLocation = gl.getAttribLocation(program, 'a_position');
 var positionBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-gl.enableVertexAttribArray(positionAttribLocation);
-gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometries.cube(100)), gl.STATIC_DRAW);
+
 
 var colorAttribLocation = gl.getAttribLocation(program, 'a_color');
 var colorBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-gl.enableVertexAttribArray(colorAttribLocation);
-gl.vertexAttribPointer(colorAttribLocation, 3, gl.UNSIGNED_BYTE, true, 0, 0);
-gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geometries.cubeColors()), gl.STATIC_DRAW);
+
 
 var normalAttribLocation = gl.getAttribLocation(program, 'a_normal');
 var normalBuffer = gl.createBuffer();
@@ -96,8 +93,14 @@ var worldLocation = gl.getUniformLocation(program, 'u_world');
 drawScene()
 // var frameCount = 0;
 function drawScene() {
-
   gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
+
+  //position
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.enableVertexAttribArray(positionAttribLocation);
+  gl.vertexAttribPointer(positionAttribLocation, 3, gl.FLOAT, false, 0, 0);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(geometries.cube(100)), gl.STATIC_DRAW);
+
   var transformationMat = tfm.multiply(tfm.scale(params.scaleX, params.scaleY, params.scaleZ), tfm.rotateX(params.rotateX));
 
   transformationMat = tfm.multiply(transformationMat, tfm.rotateY(params.rotateY));
@@ -110,26 +113,20 @@ function drawScene() {
   gl.uniformMatrix4fv(worldViewProjectionLocation, false, transformationMat);
 
   gl.uniform1f(fudgeLocation, params.fudgeFactor);
-  // gl.uniformMatrix4fv(transformationUniLocation, false, transformationMat);
+
 
   gl.uniform3f(lightColorLocation, 1.0, 1.0, 1.0);
   gl.uniform3f(lightDirectionLocation, -1.0, -0.5, -0.2);
 
-  //set Camera
-  // gl.uniformMatrix4fv(viewMatrixUniLocation, false, lookAt(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0));
 
-  // var cameraMatrix = tfm.translate(200, 0, 0);
-  // cameraMatrix = tfm.multiply(cameraMatrix, tfm.rotateY)
-  var cameraMatrix = lookAt(200, 0, 0, 0, 0, 0, 0, 1, 0);
-  var viewMatrix = tfm.inverse(cameraMatrix);
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.enableVertexAttribArray(colorAttribLocation);
+  gl.vertexAttribPointer(colorAttribLocation, 3, gl.UNSIGNED_BYTE, true, 0, 0);
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geometries.cubeColors()), gl.STATIC_DRAW);
 
   gl.drawArrays(gl.TRIANGLES, 0, 36);
-  // frameCount += 1;
-  // requestAnimationFrame(drawScene);
-}
 
-console.log(lookAt(200, 0, 0,0, 0, 0, 0, 1, 0));
-// requestAnimationFrame(drawScene);
+}
 
 //tools
 
@@ -176,13 +173,5 @@ function lookAt(ex, ey, ez, lx, ly, lz, ux, uy, uz) {
     ex, ey, ez, 1
   ];
 
-  // var translation = [
-  //   1, 0, 0, -ex,
-  //   0, 1, 0, -ey,
-  //   0, 0, 1, -ez,
-  //   0, 0, 0, 1
-  // ];
-
-  // return tfm.multiply(matrix, translation);
   return matrix
 }
