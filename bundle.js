@@ -58,7 +58,7 @@
 	var program = createProgram(gl, vertShader, fragShader);
 	gl.useProgram(program);
 	gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-	gl.clearColor(1, 0.90, 0.99, 1.0);
+	gl.clearColor(0, 0, 0, 1.0);
 	// gl.clearColor(0.0, 0.0, 0.0, 1.0);
 	gl.enable(gl.CULL_FACE);
 	gl.enable(gl.DEPTH_TEST);
@@ -73,13 +73,19 @@
 	  scaleX: 1.0,
 	  scaleY: 1.0,
 	  scaleZ: 1.0,
-	  fudgeFactor: 1.0,
-	  cameraX: 100,
-	  cameraY: 100,
-	  cameraZ: 100,
+	  cameraX: 200,
+	  cameraY: 200,
+	  cameraZ: 200,
 	  lookAtX: 0,
 	  lookAtY: 0,
-	  lookAtZ: 0
+	  lookAtZ: 0,
+	  fieldOfView: 1.0,
+	  directionX: -6.5,
+	  directionY: -10,
+	  directionZ: -2.5,
+	  colorR: 1.0,
+	  colorG: 1.0,
+	  colorB: 1.0,
 
 	}
 
@@ -107,8 +113,19 @@
 	  f2.add(params, 'lookAtX', -500, 500).onChange(drawScene);
 	  f2.add(params, 'lookAtY', -500, 500).onChange(drawScene);
 	  f2.add(params, 'lookAtZ', -500, 500).onChange(drawScene);
+	  f2.add(params, 'fieldOfView', 0, 3.14).onChange(drawScene);
 
-	  f2.add(params, 'fudgeFactor', 0.0, 20.0).onChange(drawScene);
+	  f2.open();
+
+	  var f3 = gui.addFolder('Directional Light Settings');
+	  f3.add(params, 'directionX', -10, 10).onChange(drawScene);
+	  f3.add(params, 'directionY', -10, 10).onChange(drawScene);
+	  f3.add(params, 'directionZ', -10, 10).onChange(drawScene);
+	  f3.add(params, 'colorR', 0.0, 1.0).onChange(drawScene);
+	  f3.add(params, 'colorG', 0.0, 1.0).onChange(drawScene);
+	  f3.add(params, 'colorB', 0.0, 1.0).onChange(drawScene);
+
+	  f3.open();
 	}
 
 	var positionAttribLocation = gl.getAttribLocation(program, 'a_position');
@@ -155,14 +172,14 @@
 	  gl.uniformMatrix4fv(worldLocation, false, transformationMat);
 
 	  transformationMat = tfm.multiply(transformationMat, tfm.inverse(lookAt(params.cameraX, params.cameraY, params.cameraZ, params.lookAtX, params.lookAtY, params.lookAtZ, 0, 1, 0)))
-	  transformationMat = tfm.multiply(transformationMat, tfm.project(canvas.width, canvas.height, 10000));
+	  transformationMat = tfm.multiply(transformationMat, tfm.makePerspective(params.fieldOfView, canvas.width / canvas.height, 1, 10000));
 	  gl.uniformMatrix4fv(worldViewProjectionLocation, false, transformationMat);
 
 	  gl.uniform1f(fudgeLocation, params.fudgeFactor);
 
 
-	  gl.uniform3f(lightColorLocation, 1.0, 1.0, 1.0);
-	  gl.uniform3f(lightDirectionLocation, -1.0, -0.5, -0.2);
+	  gl.uniform3f(lightColorLocation, params.colorR, params.colorG, params.colorB);
+	  gl.uniform3f(lightDirectionLocation, params.directionX, params.directionY, params.directionZ);
 
 
 	  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
@@ -227,13 +244,13 @@
 /* 1 */
 /***/ function(module, exports) {
 
-	module.exports = "attribute vec4 a_position;\nattribute vec4 a_color;\nattribute vec4 a_normal;\n\nvarying vec4 v_color;\n\nuniform float u_fudgeFactor;\nuniform vec3 u_lightColor;\nuniform vec3 u_lightDirection;\nuniform mat4 u_viewMatrix;\n\n\nuniform mat4 u_worldViewProjection; //with camera view\nuniform mat4 u_world; //original pos\n\nvoid main() {\n  //calculate position\n  vec4 position = u_worldViewProjection  * a_position;\n  float zToDivideBy = 1.0 - position.z * u_fudgeFactor;\n  gl_Position = vec4(position.xy / zToDivideBy, position.zw);\n\n\n  //calculate color\n  vec3 normal = normalize(mat3(u_world) *  vec3(a_normal));\n  vec3 reverseLightDirection = normalize(u_lightDirection * -1.0);\n  float dotProduct = dot(reverseLightDirection, normal);\n  // vec3 diffuse = u_lightColor * a_color.xyz * dotProduct;\n  vec3 diffuse = u_lightColor * vec3(0.8, 0.8, 0.8) * dotProduct;\n\n  v_color = vec4(diffuse, a_color.a);\n  // v_color = a_color;\n}\n"
+	module.exports = "attribute vec4 a_position;\nattribute vec4 a_color;\nattribute vec4 a_normal;\n\nvarying vec4 v_color;\nvarying vec4 v_normal;\n\n\nuniform mat4 u_worldViewProjection; //with camera view\nuniform mat4 u_world; //original pos\n\nvoid main() {\n  //calculate position\n  vec4 position = u_worldViewProjection  * a_position;\n  // float zToDivideBy = 1.0 - position.z * u_fudgeFactor;\n  // gl_Position = vec4(position.xy / zToDivideBy, position.zw);\n  gl_Position = position;\n  //\n  v_color = a_color;\n  v_normal = normalize(u_world * a_normal);\n\n}\n"
 
 /***/ },
 /* 2 */
 /***/ function(module, exports) {
 
-	module.exports = "precision mediump float;\n\nvarying vec4 v_color;\n\nvoid main() {\n  gl_FragColor = v_color;\n}\n"
+	module.exports = "precision mediump float;\n\nuniform vec3 u_lightColor;\nuniform vec3 u_lightDirection;\n\nvarying vec4 v_color;\nvarying vec4 v_normal;\n\nvoid main() {\n  vec3 reverseLightDirection = normalize(u_lightDirection * -1.0);\n  vec4 normal = normalize(v_normal);\n  float dotProduct = dot(reverseLightDirection, normal.xyz);\n  // vec3 diffuse = u_lightColor * v_color.xyz * dotProduct;\n  vec3 diffuse = u_lightColor * vec3(1.0, 1.0, 1.0) * dotProduct;\n  //\n  //\n  gl_FragColor = vec4(diffuse.xyz, 1.0);\n}\n"
 
 /***/ },
 /* 3 */
@@ -246,6 +263,17 @@
 	      0, 2 / h, 0, 0,
 	      0, 0, 2 / d, 0,
 	      0, 0, 0, 1
+	    ];
+	  },
+	  makePerspective: function(fieldOfViewInRadians, aspect, near, far) {
+	    var f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians);
+	    var rangeInv = 1.0 / (near - far);
+
+	    return [
+	      f / aspect, 0, 0, 0,
+	      0, f, 0, 0,
+	      0, 0, (near + far) * rangeInv, -1,
+	      0, 0, near * far * rangeInv * 2, 0
 	    ];
 	  },
 	  translate: function(tx, ty, tz) {

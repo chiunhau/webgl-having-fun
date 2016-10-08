@@ -12,7 +12,7 @@ var fragShader = createShader(gl, gl.FRAGMENT_SHADER, fragShaderSrc);
 var program = createProgram(gl, vertShader, fragShader);
 gl.useProgram(program);
 gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-gl.clearColor(1, 0.90, 0.99, 1.0);
+gl.clearColor(0, 0, 0, 1.0);
 // gl.clearColor(0.0, 0.0, 0.0, 1.0);
 gl.enable(gl.CULL_FACE);
 gl.enable(gl.DEPTH_TEST);
@@ -27,13 +27,19 @@ var params = {
   scaleX: 1.0,
   scaleY: 1.0,
   scaleZ: 1.0,
-  fudgeFactor: 1.0,
-  cameraX: 100,
-  cameraY: 100,
-  cameraZ: 100,
+  cameraX: 200,
+  cameraY: 200,
+  cameraZ: 200,
   lookAtX: 0,
   lookAtY: 0,
-  lookAtZ: 0
+  lookAtZ: 0,
+  fieldOfView: 1.0,
+  directionX: -6.5,
+  directionY: -10,
+  directionZ: -2.5,
+  colorR: 1.0,
+  colorG: 1.0,
+  colorB: 1.0,
 
 }
 
@@ -61,8 +67,19 @@ window.onload = function() {
   f2.add(params, 'lookAtX', -500, 500).onChange(drawScene);
   f2.add(params, 'lookAtY', -500, 500).onChange(drawScene);
   f2.add(params, 'lookAtZ', -500, 500).onChange(drawScene);
+  f2.add(params, 'fieldOfView', 0, 3.14).onChange(drawScene);
 
-  f2.add(params, 'fudgeFactor', 0.0, 20.0).onChange(drawScene);
+  f2.open();
+
+  var f3 = gui.addFolder('Directional Light Settings');
+  f3.add(params, 'directionX', -10, 10).onChange(drawScene);
+  f3.add(params, 'directionY', -10, 10).onChange(drawScene);
+  f3.add(params, 'directionZ', -10, 10).onChange(drawScene);
+  f3.add(params, 'colorR', 0.0, 1.0).onChange(drawScene);
+  f3.add(params, 'colorG', 0.0, 1.0).onChange(drawScene);
+  f3.add(params, 'colorB', 0.0, 1.0).onChange(drawScene);
+
+  f3.open();
 }
 
 var positionAttribLocation = gl.getAttribLocation(program, 'a_position');
@@ -109,14 +126,14 @@ function drawScene() {
   gl.uniformMatrix4fv(worldLocation, false, transformationMat);
 
   transformationMat = tfm.multiply(transformationMat, tfm.inverse(lookAt(params.cameraX, params.cameraY, params.cameraZ, params.lookAtX, params.lookAtY, params.lookAtZ, 0, 1, 0)))
-  transformationMat = tfm.multiply(transformationMat, tfm.project(canvas.width, canvas.height, 10000));
+  transformationMat = tfm.multiply(transformationMat, tfm.makePerspective(params.fieldOfView, canvas.width / canvas.height, 1, 10000));
   gl.uniformMatrix4fv(worldViewProjectionLocation, false, transformationMat);
 
   gl.uniform1f(fudgeLocation, params.fudgeFactor);
 
 
-  gl.uniform3f(lightColorLocation, 1.0, 1.0, 1.0);
-  gl.uniform3f(lightDirectionLocation, -1.0, -0.5, -0.2);
+  gl.uniform3f(lightColorLocation, params.colorR, params.colorG, params.colorB);
+  gl.uniform3f(lightDirectionLocation, params.directionX, params.directionY, params.directionZ);
 
 
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
